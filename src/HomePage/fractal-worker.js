@@ -124,8 +124,9 @@ export default () => {
         }
     }
 
-    function animateBranch( canvas, ctx, x, y, newX, newY, width, height, timeDiff, time ) {
+    async function animateBranch( canvas, ctx, x, y, newX, newY, width, height, time ) {
 
+        let timeDiff = ((new Date()).getTime() - time.getTime())/1000;
 
         ctx.moveTo(x, y);
         ctx.lineTo(timeDiff*(newX - x) + x, timeDiff*(newY - y) + y);
@@ -133,8 +134,17 @@ export default () => {
         ctx.clearRect(-width/2, -height/2, width, height);
         ctx.stroke();
 
-        const bitmap = canvas.transferToImageBitmap();
-        postMessage({bitmap})
+        if(timeDiff < 1) {
+
+            const bitmap = canvas.transferToImageBitmap();
+            postMessage({bitmap})
+
+            requestAnimationFrame(() => {
+                animateBranch( canvas, ctx, x, y, newX, newY, width, height, time );
+            })
+
+            // animateBranch( canvas, ctx, x, y, newX, newY, width, height, time );
+        }
     }
 
 // angleArea <= 90
@@ -147,7 +157,7 @@ export default () => {
     async function drawFractal( canvas, ctx, branchMemoryArray, ox, oy, x, y, angleArea, depth, branch, width, height ) {
         if(Math.abs(x) < width/2 && Math.abs(y) < height/2) {
 
-            if(depth > 3) return;
+            if(depth > 6) return;
 
             let branches = (branch === -1) ? Math.round(Math.random()*5 + 3) : Math.round(Math.random()*4 + 2);
             let length = Math.random()*90 + 10;
@@ -166,6 +176,42 @@ export default () => {
 
                 generateBranches(canvas, ctx, angleArea, tilt, length, x, y, mx, my, branches, branchArray, width, height);
             }
+
+            // await Promise.all(branchArray.map(async(branch) => {
+            //     const { x, y, newX, newY } = branch;
+            //
+            //     await new Promise((resolve, reject) => {
+            //         setTimeout(() => {
+            //             animateBranch(canvas, ctx, x, y, newX, newY, width, height, new Date());
+            //             resolve();
+            //         }, 10);
+            //     });
+            // }));
+            //
+            // let newX = branchArray[0].newX;
+            // let newY = branchArray[0].newY;
+            // drawFractal(
+            //     canvas,
+            //     ctx,
+            //     branchArray,
+            //     x,
+            //     y,
+            //     newX,
+            //     newY,
+            //     angleArea,
+            //     depth+1,
+            //     0,
+            //     width,
+            //     height
+            // );
+
+            // for(let b in branchArray) {
+            //
+            //     const {x, y, newX, newY} = branchArray[b];
+            //     requestAnimationFrame(() => {
+            //         animateBranch(canvas, ctx, x, y, newX, newY, width, height, new Date());
+            //     });
+            // }
 
             requestAnimationFrame(() => {
                 animateBranches( canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, new Date(), branchMemoryArray)
@@ -195,10 +241,21 @@ export default () => {
         ctx.closePath();
     }
 
+    async function canvasService(canvas) {
+
+        const bitmap = canvas.transferToImageBitmap();
+        postMessage({bitmap})
+
+        setTimeout(() => {
+            canvasService(canvas);
+        }, 20)
+    }
+
     self.addEventListener('message', e => { // eslint-disable-line no-restricted-globals
         if (!e) return;
 
         const canvas = e.data.canvas;
         animateFractal(canvas);
+        // canvasService(canvas);
     })
 }
