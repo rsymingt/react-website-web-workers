@@ -60,20 +60,20 @@ function drawBranches( ctx, branchArray, width, height, timeDiff ) {
         ctx.moveTo(x, y);
         ctx.lineTo(timeDiff*newX, timeDiff*newY);
 
-        ctx.clearRect(-width/2, -height/2, width, height);
+        // ctx.clearRect(-width/2, -height/2, width, height);
         ctx.stroke();
     }
 
 }
 
-function animateBranches( ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray ) {
+function animateBranches( ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy ) {
 
     let timeDiff = ((new Date()).getTime() - time.getTime())/1000;
 
     drawBranches(ctx, branchArray, width, height, timeDiff);
 
     console.log(timeDiff);
-    if(timeDiff > 1) {
+    if(timeDiff >= 1) {
         let newX = branchArray[0].newX;
         let newY = branchArray[0].newY;
 
@@ -115,8 +115,8 @@ async function drawFractal2( ctx, branchMemoryArray, x, y, angleArea, depth, bra
 
         for(let b in branchMemoryArray) {
             let branch = branchMemoryArray[b];
-            let mx = branch.x;
-            let my = branch.y;
+            let mx = branch.newX;
+            let my = branch.newY;
 
             let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
 
