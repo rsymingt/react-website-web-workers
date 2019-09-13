@@ -19,40 +19,40 @@ function centerDistance(x, y) {
     return Math.round(Math.sqrt(Math.pow(0-x, 2) + Math.pow(0-y, 2)));
 }
 
-function generateBranches( ctx, angleArea, tilt, length, x, y, branches, branchArray, width, height) {
+// TODO randomize direction?
+function generateBranches( ctx, angleArea, tilt, length, ox, oy, x, y, branches) {
 
     for(let b = 0; b < branches; b ++) {
 
+        // let newAngle = Math.round(Math.atan2(newY+ox, newX+oy)*180/Math.PI);
+
         let angle = (2*Math.PI)/branches*b + angleArea/2 + tilt;
+
+        if(ox !== x && oy !== y) {
+            let vx = x - ox;
+            let vy = y - oy;
+
+            let centerAngle = Math.atan2(vy, vx);
+
+            let lowerBound = centerAngle - angleArea/2;
+            let upperBound = centerAngle + angleArea/2;
+
+            let bCoef = angleArea/(branches-1);
+
+            console.log(bCoef);
+
+            angle = bCoef*b + lowerBound;
+        }
+
+        // let angle = (2*Math.PI)/branches*b + angleArea/2 + tilt;
         let newX = Math.round(Math.cos(angle)*length) + x;
         let newY = Math.round(Math.sin(angle)*length) + y;
 
-        let newAngle = Math.round(Math.atan2(newY, newX)*180/Math.PI);
         let angleAreaDegrees = angleArea*180/Math.PI;
-
-        // nothing can be behind the point
-        if(centerDistance(newX, newY) - centerDistance(x,y) < 0) continue;
-
-        // nothing can go directly backwards
-        // if(centerDistance(newX, newY) - centerDistance(x,y) < -length/2) continue;
-
-        branchArray.push({
-            newX,
-            newY,
-            x,
-            y
-        });
-
-        // draw line for branch
-        // ctx.moveTo(x, y);
-        // ctx.lineTo(newX, newY);
-        //
-        // ctx.clearRect(-width/2, -height/2, width, height);
-        // ctx.stroke();
     }
 }
 
-function drawBranches( ctx, branchArray, width, height, timeDiff ) {
+function trippyDrawBranches( ctx, branchArray, width, height, timeDiff ) {
 
     for(let b in branchArray) {
         const { x, y, newX, newY } = branchArray[b];
@@ -60,34 +60,55 @@ function drawBranches( ctx, branchArray, width, height, timeDiff ) {
         ctx.moveTo(x, y);
         ctx.lineTo(timeDiff*newX, timeDiff*newY);
 
-        // ctx.clearRect(-width/2, -height/2, width, height);
+        ctx.clearRect(-width/2, -height/2, width, height);
         ctx.stroke();
     }
 
 }
 
+function drawBranches( ctx, branchArray, width, height, timeDiff ) {
+    for(let b in branchArray) {
+        const { x, y, newX, newY } = branchArray[b];
+
+        ctx.moveTo(x, y);
+        ctx.lineTo(timeDiff*(newX - x) + x, timeDiff*(newY - y) + y);
+
+        ctx.clearRect(-width/2, -height/2, width, height);
+        ctx.stroke();
+    }
+}
+
 function animateBranches( ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy ) {
 
     let timeDiff = ((new Date()).getTime() - time.getTime())/1000;
+    // timeDiff=1;
 
-    drawBranches(ctx, branchArray, width, height, timeDiff);
+    if(trippy) {
+        trippyDrawBranches(ctx, branchArray, width, height, timeDiff);
+    } else {
+        drawBranches(ctx, branchArray, width, height, timeDiff);
+    }
 
-    console.log(timeDiff);
+    // console.log(timeDiff);
     if(timeDiff >= 1) {
-        let newX = branchArray[0].newX;
-        let newY = branchArray[0].newY;
+        setTimeout(() => {
+            let newX = branchArray[0].newX;
+            let newY = branchArray[0].newY;
 
-        drawFractal2(
-            ctx,
-            branchArray,
-            newX,
-            newY,
-            angleArea,
-            depth+1,
-            0,
-            width,
-            height
-        );
+            drawFractal2(
+                ctx,
+                branchArray,
+                x,
+                y,
+                newX,
+                newY,
+                angleArea,
+                depth+1,
+                0,
+                width,
+                height
+            );
+        }, 1000)
     } else {
         window.requestAnimationFrame(() => {
             animateBranches( ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray)
@@ -102,26 +123,26 @@ determine branch
 (pseudo) randomize number of branches?
 pseudo randomize direction of branches?
  */
-async function drawFractal2( ctx, branchMemoryArray, x, y, angleArea, depth, branch, width, height ) {
+async function drawFractal2( ctx, branchMemoryArray, ox, oy, x, y, angleArea, depth, branch, width, height ) {
     if(Math.abs(x) < width/2 && Math.abs(y) < height/2) {
 
-        if(depth > 6) return;
+        if(depth > 1) return;
 
-        let branches = (branch === -1) ? Math.round(Math.random()*5 + 3):Math.round(Math.random()*4 + 1);
+        let branches = (branch === -1) ? Math.round(Math.random()*5 + 3) : Math.round(Math.random()*0 + 3);
         let length = Math.random()*90 + 10;
         let branchArray = [];
 
-        generateBranches(ctx, angleArea, 0, length, x, y, branches, branchArray, width, height);
+        generateBranches(ctx, angleArea, 0, length, ox, oy, x, y, branches);
 
-        for(let b in branchMemoryArray) {
-            let branch = branchMemoryArray[b];
-            let mx = branch.newX;
-            let my = branch.newY;
-
-            let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
-
-            generateBranches(ctx, angleArea, tilt, length, mx, my, branches, branchArray, width, height);
-        }
+        // for(let b in branchMemoryArray) {
+        //     let branch = branchMemoryArray[b];
+        //     let mx = branch.newX;
+        //     let my = branch.newY;
+        //
+        //     let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
+        //
+        //     generateBranches(ctx, angleArea, tilt, length, ox, oy, mx, my, branches, branchArray, width, height);
+        // }
 
         window.requestAnimationFrame(() => {
             animateBranches( ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, new Date(), branchMemoryArray)
@@ -146,7 +167,7 @@ async function animateFractal( canvas ) {
     // randomize??
     ctx.strokeStyle = 'rgba(0, 153, 255, 1)';
 
-    drawFractal2(ctx, [], 0, 0, Math.PI/2, 0, -1, width, height);
+    drawFractal2(ctx, [], 0, 0, 0, 0, Math.PI/2, 0, -1, width, height);
 
     ctx.closePath();
 }
