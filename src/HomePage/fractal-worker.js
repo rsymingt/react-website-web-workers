@@ -73,22 +73,33 @@ export default () => {
 
     }
 
-    function drawBranches( canvas, ctx, branchArray, width, height, timeDiff ) {
-        for(let b in branchArray) {
-            const { x, y, newX, newY } = branchArray[b];
+    async function drawBranches( canvas, ctx, branchArray, width, height, timeDiff ) {
+
+        await Promise.all(branchArray.map(async(branch) => {
+            const { x, y, newX, newY } = branch;
 
             ctx.moveTo(x, y);
             ctx.lineTo(timeDiff*(newX - x) + x, timeDiff*(newY - y) + y);
 
             ctx.clearRect(-width/2, -height/2, width, height);
             ctx.stroke();
-        }
+        }))
+
+        // for(let b in branchArray) {
+        //     const { x, y, newX, newY } = branchArray[b];
+        //
+        //     ctx.moveTo(x, y);
+        //     ctx.lineTo(timeDiff*(newX - x) + x, timeDiff*(newY - y) + y);
+        //
+        //     ctx.clearRect(-width/2, -height/2, width, height);
+        //     ctx.stroke();
+        // }
 
         const bitmap = canvas.transferToImageBitmap();
         postMessage({bitmap})
     }
 
-    function animateBranches( canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy ) {
+    async function animateBranches( canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy ) {
 
         let timeDiff = ((new Date()).getTime() - time.getTime())/1000;
         // timeDiff=1;
@@ -96,7 +107,7 @@ export default () => {
         if(trippy) {
             trippyDrawBranches(canvas, ctx, branchArray, width, height, timeDiff);
         } else {
-            drawBranches(canvas, ctx, branchArray, width, height, timeDiff);
+            await drawBranches(canvas, ctx, branchArray, width, height, timeDiff);
         }
 
         // console.log(timeDiff);
@@ -159,8 +170,8 @@ export default () => {
 
             if(depth > 6) return;
 
-            let branches = (branch === -1) ? Math.round(Math.random()*5 + 3) : Math.round(Math.random()*4 + 2);
-            let length = Math.random()*90 + 10;
+            let branches = (branch === -1) ? Math.round(Math.random()*5 + 3) : Math.round(Math.random()*2 + 2);
+            let length = Math.random()*50 + 150;
             let branchArray = [];
 
             generateBranches(canvas, ctx, angleArea, 0, length, ox, oy, x, y, branches, branchArray, width, height);
