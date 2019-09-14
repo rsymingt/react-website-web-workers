@@ -1,4 +1,5 @@
 
+const path = require('path');
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 
 module.exports = {
@@ -38,5 +39,11 @@ module.exports = {
             template: "./src/index.html",
             filename: "./index.html"
         })
-    ]
+    ],
+    output: {
+        filename: '[name].js?t=' + new Date().getTime(),
+        // chunkFilename: '[name]-chunk.js?t=' + new Date().getTime(),
+        // publicPath: './',
+        path: path.resolve(__dirname, 'dist')
+    }
 };
