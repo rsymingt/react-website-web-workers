@@ -1,6 +1,8 @@
 
 import BranchWorker from './branch.worker';
 
+const _self = self; // eslint-disable-line no-restricted-globals
+
 function centerDistance(x, y) {
     return Math.round(Math.sqrt(Math.pow(0 - x, 2) + Math.pow(0 - y, 2)));
 }
@@ -214,12 +216,17 @@ function commitCanvas( canvas ) {
     postMessage({bitmap});
 }
 
+let done = false;
+let animationsDone = false;
+
 async function canvasService( canvas ) {
     commitCanvas(canvas);
 
-    setTimeout(() => {
-        canvasService(canvas);
-    }, 20)
+    if(!animationsDone) {
+        setTimeout(() => {
+            canvasService(canvas);
+        }, 20)
+    }
 }
 
 async function animationService( canvas, ctx, workers, promiseBranches, config ) {
@@ -249,15 +256,17 @@ async function animationService( canvas, ctx, workers, promiseBranches, config )
 
     await Promise.all(animationPromises);
 
-    // CLEANUP
-    // workers.forEach(worker => worker.terminate());
-    // self.close(); // eslint-disable-line no-restricted-globals
+    if(done) {
+        // CLEANUP
+        workers.forEach(worker => worker.terminate());
+        animationsDone = true;
+        commitCanvas(canvas);
+    } else {
+        setTimeout(async() => {
+            animationService(canvas, ctx, workers, promiseBranches, config);
+        }, 20)
+    }
 
-    // commitCanvas(canvas);
-
-    setTimeout(() => {
-        animationService(canvas, ctx, workers, promiseBranches, config);
-    }, 20)
 }
 
 async function fractalService(workers, config) {
@@ -284,6 +293,8 @@ async function fractalService(workers, config) {
     let promiseBranches = [];
     animationService(canvas, ctx, workers, promiseBranches, config);
     await drawFractal(canvas, ctx, workers, promiseBranches, [], 0, 0, 0, 0, angleArea, 0, -1, width, height, config);
+
+    done = true;
 
     // ctx.closePath();
 }

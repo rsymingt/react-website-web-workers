@@ -38,11 +38,11 @@ function HomePage() {
         maxLength: 200,
         minBranches: 1,
         maxBranches: 3,
-        maxDepth: 9,
+        maxDepth: 4,
 
         // longestAnimationTime: 0.05,
         animateAllBranches: false,
-        allowBranchesToGoBackward: true,
+        allowBranchesToGoBackward: false,
     });
 
     worker.addEventListener('message', (e) => {
