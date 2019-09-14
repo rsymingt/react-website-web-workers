@@ -11,8 +11,8 @@ import { Parallax, Background } from 'react-parallax';
 
 import UserContext from "../UserContext";
 
-import fractalWorker from "./fractal-worker";
-import WebWorker from "./workerSetup";
+import fractalWorker from './fractal.worker';
+// import WebWorker from "./workerSetup";
 
 function useCustomHook() {
 
@@ -29,7 +29,6 @@ function HomePage() {
     useEffect(() => {
         // Update the document title using the browser API
         document.title = `You clicked ${count} times`;
-        console.log('test');
 
         if(canvasRef !== null) {
             const canvas = canvasRef.current;
@@ -37,7 +36,7 @@ function HomePage() {
 
             const offscreenCanvas = new OffscreenCanvas(canvas.width, canvas.height);
 
-            const worker = new WebWorker(fractalWorker);
+            const worker = new fractalWorker();
             worker.postMessage({canvas: offscreenCanvas}, [offscreenCanvas]);
 
             worker.addEventListener('message', (e) => {

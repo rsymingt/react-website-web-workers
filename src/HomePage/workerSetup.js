@@ -1,7 +1,11 @@
+
 export default class WebWorker {
-    constructor(worker) {
-        const code = worker.toString();
-        const blob = new Blob(['('+code+')()']);
+    constructor(workerModule) {
+        const code = workerModule.toString();
+
+        console.log(code);
+
+        const blob = new Blob([`(${code})()`]);
         return new Worker(URL.createObjectURL(blob));
     }
 }
