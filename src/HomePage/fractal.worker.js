@@ -1,4 +1,6 @@
 
+import BranchWorker from './branch.worker';
+
 function centerDistance(x, y) {
     return Math.round(Math.sqrt(Math.pow(0 - x, 2) + Math.pow(0 - y, 2)));
 }
@@ -78,9 +80,6 @@ async function drawBranches(canvas, ctx, branchArray, width, height, timeDiff) {
 
         ctx.moveTo(x, y);
         ctx.lineTo(timeDiff * (newX - x) + x, timeDiff * (newY - y) + y);
-
-        ctx.clearRect(-width / 2, -height / 2, width, height);
-        ctx.stroke();
     }))
 
     // for(let b in branchArray) {
@@ -93,11 +92,11 @@ async function drawBranches(canvas, ctx, branchArray, width, height, timeDiff) {
     //     ctx.stroke();
     // }
 
-    const bitmap = canvas.transferToImageBitmap();
-    postMessage({bitmap})
+    // const bitmap = canvas.transferToImageBitmap();
+    // postMessage({bitmap})
 }
 
-async function animateBranches(canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy) {
+async function animateBranches(canvas, ctx, workers, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray, trippy) {
 
     let timeDiff = ((new Date()).getTime() - time.getTime()) / 1000;
     // timeDiff=1;
@@ -110,27 +109,27 @@ async function animateBranches(canvas, ctx, angleArea, length, x, y, branches, b
 
     // console.log(timeDiff);
     if (timeDiff >= 1) {
-        let newX = branchArray[0].newX;
-        let newY = branchArray[0].newY;
-        drawFractal(
-            canvas,
-            ctx,
-            branchArray,
-            x,
-            y,
-            newX,
-            newY,
-            angleArea,
-            depth + 1,
-            0,
-            width,
-            height
-        );
+        // let newX = branchArray[0].newX;
+        // let newY = branchArray[0].newY;
+        // drawFractal(
+        //     canvas,
+        //     ctx,
+        //     workers,
+        //     branchArray,
+        //     x,
+        //     y,
+        //     newX,
+        //     newY,
+        //     angleArea,
+        //     depth + 1,
+        //     0,
+        //     width,
+        //     height
+        // );
     } else {
-        // requestAnimationFrame(() => {
-        //     animateBranches(canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray)
-        // });
-        await animateBranches(canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray)
+        requestAnimationFrame(() => {
+            animateBranches(canvas, ctx, workers, angleArea, length, x, y, branches, branchArray, width, height, depth, time, branchMemoryArray)
+        });
     }
 }
 
@@ -164,28 +163,74 @@ determine branch
 (pseudo) randomize number of branches?
 pseudo randomize direction of branches?
  */
-async function drawFractal(canvas, ctx, branchMemoryArray, ox, oy, x, y, angleArea, depth, branch, width, height) {
+async function drawFractal(canvas, ctx, workers, branchMemoryArray, ox, oy, x, y, angleArea, depth, branch, width, height) {
     if (Math.abs(x) < width / 2 && Math.abs(y) < height / 2) {
 
-        if (depth > 6) return;
+        if (depth > 8) return;
 
         let branches = (branch === -1) ? Math.round(Math.random() * 5 + 3) : Math.round(Math.random() * 2 + 2);
-        let length = Math.random() * 50 + 150;
+        let length = Math.random() * 150 + 50;
         let branchArray = [];
 
-        await generateBranches(canvas, ctx, angleArea, 0, length, ox, oy, x, y, branches, branchArray, width, height);
+        // await generateBranches(canvas, ctx, angleArea, 0, length, ox, oy, x, y, branches, branchArray, width, height);
 
-        for (let b in branchMemoryArray) {
-            let branch = branchMemoryArray[b];
-            let x = branch.x;
-            let y = branch.y;
-            let mx = branch.newX;
-            let my = branch.newY;
+        branchMemoryArray.splice(0, 0, {
+            x: ox,
+            y: oy,
+            newX: x,
+            newY: y,
+        });
 
-            let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
+        // let startTime = (new Date).getTime();
+        // for (let b in branchMemoryArray) {
+        //     let branch = branchMemoryArray[b];
+        //     let x = branch.x;
+        //     let y = branch.y;
+        //     let mx = branch.newX;
+        //     let my = branch.newY;
+        //
+        //     let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
+        //
+        //     // TODO make this threaded
+        //     await generateBranches(canvas, ctx, angleArea, tilt, length, x, y, mx, my, branches, branchArray, width, height);
+        // }
+        // let endTime = (new Date).getTime();
+        // console.log(`diff: ${(endTime - startTime)/1000}`)
 
-            await generateBranches(canvas, ctx, angleArea, tilt, length, x, y, mx, my, branches, branchArray, width, height);
+        let startTime = (new Date).getTime();
+
+        let chunkSize = branchMemoryArray.length < workers.length ? branchMemoryArray.length : branchMemoryArray.length/workers.length;
+
+        let promises = [];
+
+        for(let w in workers) {
+            const worker = workers[w];
+            const chunk = branchMemoryArray.slice(w*chunkSize, w*chunkSize + chunkSize);
+
+            worker.postMessage({
+                branchMemoryArray: chunk,
+                width,
+                height,
+                branches, // max number
+                length,
+                angleArea,
+            });
+
+            promises.push(new Promise((resolve, reject) => {
+                worker.addEventListener('message', e => {
+                    if(!e) reject(e);
+                    resolve(e.data);
+                })
+            }))
         }
+
+        await Promise.all(promises)
+            .then(arrays => {
+                branchArray = branchArray.concat(...arrays);
+            });
+
+        let endTime = (new Date).getTime();
+        console.log(`diff: ${(endTime - startTime)/1000}`)
 
         // await Promise.all(branchArray.map(async(branch) => {
         //     const { x, y, newX, newY } = branch;
@@ -223,9 +268,28 @@ async function drawFractal(canvas, ctx, branchMemoryArray, ox, oy, x, y, angleAr
         //     });
         // }
 
-        // requestAnimationFrame(() => {
-        await animateBranches(canvas, ctx, angleArea, length, x, y, branches, branchArray, width, height, depth, new Date(), branchMemoryArray)
-        // });
+        requestAnimationFrame(() => {
+            animateBranches(canvas, ctx, workers, angleArea, length, x, y, branches, branchArray, width, height, depth, new Date(), branchMemoryArray)
+        });
+
+
+        let newX = branchArray[0].newX;
+        let newY = branchArray[0].newY;
+        drawFractal(
+            canvas,
+            ctx,
+            workers,
+            branchArray,
+            x,
+            y,
+            newX,
+            newY,
+            angleArea,
+            depth + 1,
+            0,
+            width,
+            height
+        );
 
 
     } else {
@@ -233,7 +297,7 @@ async function drawFractal(canvas, ctx, branchMemoryArray, ox, oy, x, y, angleAr
     }
 }
 
-async function animateFractal(canvas) {
+async function animateFractal(canvas, workers) {
     const ctx = canvas.getContext('2d');
 
     const width = canvas.width;
@@ -246,15 +310,23 @@ async function animateFractal(canvas) {
     // randomize??
     ctx.strokeStyle = 'rgba(0, 153, 255, 1)';
 
-    await drawFractal(canvas, ctx, [], 0, 0, 0, 0, Math.PI / 2, 0, -1, width, height);
+    await drawFractal(canvas, ctx, workers, [], 0, 0, 0, 0, Math.PI / 2, 0, -1, width, height);
 
-    ctx.closePath();
+    // ctx.closePath();
 }
 
-async function canvasService(canvas) {
+async function canvasService( canvas ) {
+
+    // console.log(canvas);
+
+    const { width, height } = canvas;
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(-width / 2, -height / 2, width, height);
+    ctx.stroke();
 
     const bitmap = canvas.transferToImageBitmap();
-    postMessage({bitmap})
+    postMessage({bitmap});
 
     setTimeout(() => {
         canvasService(canvas);
@@ -264,7 +336,24 @@ async function canvasService(canvas) {
 self.addEventListener('message', e => { // eslint-disable-line no-restricted-globals
     if (!e) return;
 
-    const canvas = e.data.canvas;
-    animateFractal(canvas);
-    // canvasService(canvas);
-})
+    const {
+        width,
+        height,
+        maxBranches
+    } = e.data;
+
+    let workers = [];
+    let maxThreads = navigator.hardwareConcurrency;
+    for(let w = 0; w < maxThreads; w++) {
+        workers.push(new BranchWorker());
+    }
+
+    const canvas = new OffscreenCanvas(width, height);
+    animateFractal(canvas, workers);
+    canvasService(canvas);
+
+//
+//     const canvas = e.data.canvas;
+//     animateFractal(canvas);
+//     canvasService(canvas);
+});

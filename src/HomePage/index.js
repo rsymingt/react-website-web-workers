@@ -25,24 +25,25 @@ function HomePage() {
 
     const canvasRef = useRef(null);
 
-    // Similar to componentDidMount and componentDidUpdate:
-    useEffect(() => {
-        // Update the document title using the browser API
-        document.title = `You clicked ${count} times`;
+    const worker = new fractalWorker();
+    worker.postMessage({
+        width: window.innerWidth,
+        height: window.innerHeight,
+    });
 
+    worker.addEventListener('message', (e) => {
         if(canvasRef !== null) {
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('bitmaprenderer');
 
-            const offscreenCanvas = new OffscreenCanvas(canvas.width, canvas.height);
-
-            const worker = new fractalWorker();
-            worker.postMessage({canvas: offscreenCanvas}, [offscreenCanvas]);
-
-            worker.addEventListener('message', (e) => {
-                ctx.transferFromImageBitmap(e.data.bitmap)
-            });
+            ctx.transferFromImageBitmap(e.data.bitmap)
         }
+    });
+
+    // Similar to componentDidMount and componentDidUpdate:
+    useEffect(() => {
+        // Update the document title using the browser API
+        document.title = `You clicked ${count} times`;
 
         return () => {
             // CLEAN UP after unmount
