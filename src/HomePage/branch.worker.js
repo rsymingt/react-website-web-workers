@@ -3,7 +3,7 @@ function centerDistance(x, y) {
     return Math.round(Math.sqrt(Math.pow(0 - x, 2) + Math.pow(0 - y, 2)));
 }
 
-function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branchArray, width, height) {
+function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branchArray, width, height, config) {
 
     for (let b = 0; b < branches; b++) {
 
@@ -20,11 +20,11 @@ function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branc
             let lowerBound = centerAngle - angleArea / 2;
             let upperBound = centerAngle + angleArea / 2;
 
-            let bCoef = angleArea / (branches - 1);
+            let bCoef = (branches <= 1) ? angleArea / 2 : angleArea / (branches - 1);
 
             // console.log(bCoef);
 
-            angle = bCoef * b + lowerBound;
+            angle = (branches <= 1) ? bCoef + lowerBound : bCoef * b + lowerBound;
         }
 
         // let angle = (2*Math.PI)/branches*b + angleArea/2 + tilt;
@@ -35,7 +35,8 @@ function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branc
 
 
         // nothing can be behind the point
-        if (centerDistance(newX, newY) - centerDistance(x, y) < 0) continue;
+        if (config.hasOwnProperty('allowBranchesToGoBackward') && config.allowBranchesToGoBackward === true) {
+        } else if(centerDistance(newX, newY) - centerDistance(x, y) < 0) continue;
 
         // nothing can go directly backwards
         // if(centerDistance(newX, newY) - centerDistance(x,y) < -length/2) continue;
@@ -44,7 +45,8 @@ function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branc
             newX,
             newY,
             x,
-            y
+            y,
+            length
         });
 
         // draw line for branch
@@ -79,7 +81,7 @@ self.addEventListener('message', e => { // eslint-disable-line no-restricted-glo
         let tilt = Math.atan2(my, mx) - Math.atan2(y, x);
 
         // TODO make this threaded
-        generateBranches(angleArea, tilt, length, x, y, mx, my, branches, branchArray, width, height);
+        generateBranches(angleArea, tilt, length, x, y, mx, my, branches, branchArray, width, height, e.data);
     }
 
     postMessage(branchArray);

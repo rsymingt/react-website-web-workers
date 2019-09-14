@@ -25,10 +25,24 @@ function HomePage() {
 
     const canvasRef = useRef(null);
 
+    // TODO pseudo randomize angleArea
+    // TODO
+
     const worker = new fractalWorker();
     worker.postMessage({
         width: window.innerWidth,
         height: window.innerHeight,
+        angleArea: Math.PI/1.5,
+
+        minLength: 50,
+        maxLength: 200,
+        minBranches: 1,
+        maxBranches: 3,
+        maxDepth: 9,
+
+        // longestAnimationTime: 0.05,
+        animateAllBranches: false,
+        allowBranchesToGoBackward: true,
     });
 
     worker.addEventListener('message', (e) => {
