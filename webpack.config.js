@@ -26,6 +26,10 @@ module.exports = {
             {
                 test: /\.worker\.js$/,
                 use: { loader: 'worker-loader' }
+            },
+            {
+                test: /\.(woff(2)?|ttf|eot|png|jpg|gif)$/i,
+                use: { loader: 'url-loader' }
             }
         ]
     },

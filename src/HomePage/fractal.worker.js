@@ -106,7 +106,7 @@ determine branch
 pseudo randomize direction of branches?
  */
 async function drawFractal(canvas, ctx, workers, promiseBranches, branchMemoryArray, ox, oy, x, y, angleArea, depth, branch, width, height, config) {
-    if (Math.abs(x) < width / 2 && Math.abs(y) < height / 2) {
+    if (Math.abs(x) < config.limitX && Math.abs(y) < config.limitY) {
 
         if (depth >= config.maxDepth) return;
 
@@ -128,7 +128,7 @@ async function drawFractal(canvas, ctx, workers, promiseBranches, branchMemoryAr
         let promises = [];
         for(let w in workers) {
             const worker = workers[w];
-            const chunk = branchMemoryArray.slice(w*chunkSize, w*chunkSize + chunkSize);
+            let chunk = (parseInt(w) === (workers.length-1)) ? branchMemoryArray.splice(0) : branchMemoryArray.splice(0, chunkSize);
 
             if(chunk.length > 0) {
 
@@ -179,27 +179,6 @@ async function drawFractal(canvas, ctx, workers, promiseBranches, branchMemoryAr
             config
         );
 
-        // let newX = branchArray[0].newX;
-        // let newY = branchArray[0].newY;
-        // let array = await drawFractal(
-        //     canvas,
-        //     ctx,
-        //     workers,
-        //     branchArray,
-        //     x,
-        //     y,
-        //     newX,
-        //     newY,
-        //     angleArea,
-        //     depth + 1,
-        //     0,
-        //     width,
-        //     height,
-        //     config
-        // );
-        // array.push(promises);
-        // return array;
-
     } else {
         return;
     }
@@ -226,13 +205,15 @@ async function canvasService( canvas ) {
         setTimeout(() => {
             canvasService(canvas);
         }, 20)
+    } else {
+        // eslint-disable-next-line no-restricted-globals
+        close();
     }
 }
 
-async function animationService( canvas, ctx, workers, promiseBranches, config ) {
+async function animationService( canvas, ctx, workers, promiseBranches, animationPromises, config ) {
 
     let promiseBranch = [];
-    let animationPromises = [];
     while((promiseBranch = promiseBranches.shift())) {
         let animationPromise = new Promise(async(resolve, reject) => {
             await Promise.all(promiseBranch)
@@ -254,16 +235,15 @@ async function animationService( canvas, ctx, workers, promiseBranches, config )
         }
     }
 
-    await Promise.all(animationPromises);
-
-    if(done) {
+    if(done && !promiseBranches.length) {
+        await Promise.all(animationPromises);
         // CLEANUP
         workers.forEach(worker => worker.terminate());
         animationsDone = true;
         commitCanvas(canvas);
     } else {
         setTimeout(async() => {
-            animationService(canvas, ctx, workers, promiseBranches, config);
+            animationService(canvas, ctx, workers, promiseBranches, animationPromises, config);
         }, 20)
     }
 
@@ -291,7 +271,7 @@ async function fractalService(workers, config) {
     ctx.strokeStyle = 'rgba(0, 153, 255, 1)';
 
     let promiseBranches = [];
-    animationService(canvas, ctx, workers, promiseBranches, config);
+    animationService(canvas, ctx, workers, promiseBranches, [], config);
     await drawFractal(canvas, ctx, workers, promiseBranches, [], 0, 0, 0, 0, angleArea, 0, -1, width, height, config);
 
     done = true;

@@ -7,12 +7,15 @@ import React, {
     useRef
 } from 'react';
 
-import { Parallax, Background } from 'react-parallax';
-
 import UserContext from "../UserContext";
 
 import fractalWorker from './fractal.worker';
 // import WebWorker from "./workerSetup";
+
+import {
+    MDBAnimation,
+    MDBBtn,
+} from 'mdbreact';
 
 function useCustomHook() {
 
@@ -22,6 +25,39 @@ function HomePage() {
 
     const [count, setCount] = useState(0);
     const user = useContext(UserContext);
+
+    // Similar to componentDidMount and componentDidUpdate:
+    useEffect(() => {
+        // Update the document title using the browser API
+        // document.title = `You clicked ${count} times`;
+
+        return () => {
+            // CLEAN UP after unmount
+        }
+    });
+
+    return(
+        <div>
+            <FractalBackground>
+                <div style={{
+                    width: "100vw",
+                    height: "100vh",
+                    display: "flex",
+                    zIndex: '1000',
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}>
+                    <MDBAnimation type="bounce" infinite>
+                        <h1>Hello, my name is Ryan Symington</h1>
+                    </MDBAnimation>
+                </div>
+            </FractalBackground>
+        </div>
+    )
+}
+
+function FractalBackground(props) {
 
     const canvasRef = useRef(null);
 
@@ -34,11 +70,14 @@ function HomePage() {
         height: window.innerHeight,
         angleArea: Math.PI/1.5,
 
-        minLength: 50,
+        minLength: 100,
         maxLength: 200,
-        minBranches: 1,
-        maxBranches: 3,
-        maxDepth: 4,
+        minBranches: 2,
+        maxBranches: 4,
+        maxDepth: 12,
+
+        limitX: window.innerWidth/2*2,
+        limitY: window.innerWidth/2*2,
 
         // longestAnimationTime: 0.05,
         animateAllBranches: false,
@@ -54,29 +93,27 @@ function HomePage() {
         }
     });
 
-    // Similar to componentDidMount and componentDidUpdate:
-    useEffect(() => {
-        // Update the document title using the browser API
-        document.title = `You clicked ${count} times`;
-
-        return () => {
-            // CLEAN UP after unmount
-        }
-    });
-
     return(
-        <div>
-            <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight}/>
-            {/*<Parallax*/}
-            {/*    blur={10}*/}
-            {/*    bgImage={require('path/to/image.jpg')}*/}
-            {/*    bgImageAlt="the cat"*/}
-            {/*    strength={200}*/}
-            {/*>*/}
-            {/*    Put some text content here - even an empty div with fixed dimensions to have a height*/}
-            {/*    for the parallax.*/}
-            {/*    <div style={{ height: '200px' }} />*/}
-            {/*</Parallax>*/}
+        <div  style={{
+            backgroundColor: "rgba(0 ,0 ,0 , 0.35)",
+            position: "fixed",
+            zIndex: '1',
+            top: 0,
+            bottom:0,
+            left: 0,
+            right: 0,
+            overflow: "auto"
+        }}>
+            <canvas style={{
+                filter: "blur(4px)",
+                position: "fixed",
+                zIndex: '-2',
+                top: 0,
+                bottom:0,
+                left: 0,
+                right: 0,
+            }} ref={canvasRef} width={window.innerWidth} height={window.innerHeight}/>
+            {props.children}
         </div>
     )
 }
