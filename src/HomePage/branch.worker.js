@@ -58,7 +58,7 @@ function generateBranches(angleArea, tilt, length, ox, oy, x, y, branches, branc
     }
 }
 
-self.addEventListener('message', e => { // eslint-disable-line no-restricted-globals
+onmessage = e => { // eslint-disable-line no-restricted-globals
     if (!e) return;
 
     const {
@@ -85,4 +85,4 @@ self.addEventListener('message', e => { // eslint-disable-line no-restricted-glo
     }
 
     postMessage(branchArray);
-});
+};

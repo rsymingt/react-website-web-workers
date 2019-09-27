@@ -268,7 +268,7 @@ async function fractalService(workers, config) {
     ctx.beginPath();
 
     // randomize??
-    ctx.strokeStyle = 'rgba(0, 153, 255, 1)';
+    ctx.strokeStyle = config.strokeStyle;
 
     let promiseBranches = [];
     animationService(canvas, ctx, workers, promiseBranches, [], config);
@@ -279,7 +279,7 @@ async function fractalService(workers, config) {
     // ctx.closePath();
 }
 
-self.addEventListener('message', async(e) => { // eslint-disable-line no-restricted-globals
+onmessage = async(e) => { // eslint-disable-line no-restricted-globals
     if (!e) return;
 
     let workers = [];
@@ -294,4 +294,4 @@ self.addEventListener('message', async(e) => { // eslint-disable-line no-restric
 //     const canvas = e.data.canvas;
 //     animateFractal(canvas);
 //     canvasService(canvas);
-});
+};
