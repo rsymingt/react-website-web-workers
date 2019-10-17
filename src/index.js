@@ -8,6 +8,10 @@ import 'mdbreact/dist/css/mdb.css';
 
 import App from './App';
 import * as serviceWorker from './serviceWorker';
+import 'babel-polyfill';
+
+// require("babel-core/register");
+// require("babel-polyfill");
 
 ReactDOM.render(<App />, document.getElementById('root'));
 

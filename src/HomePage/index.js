@@ -9,12 +9,16 @@ import React, {
 
 import UserContext from "../UserContext";
 
-import fractalWorker from './fractal.worker';
+import FractalWorker from './fractal.worker';
+import GifWorker from './gif.worker';
 
 import {
     MDBAnimation,
     MDBBtn
 } from 'mdbreact';
+import BranchWorker from "./branch.worker";
+
+const gifEncoder = require('gif-encoder');
 
 function HomePage() {
 
@@ -75,22 +79,107 @@ function Section( props ) {
         </div>
     )
 }
-let bitmapURL = null
+
+class GifWorkerManager {
+    constructor() {
+        this.currentWorker = 0;
+        this.maxWorkers = navigator.hardwareConcurrency;
+
+        this.workers = [];
+        for(let w = 0; w < this.maxWorkers; w++) {
+            let worker = new GifWorker();
+            let data = [];
+            let res, rej;
+            let complete = new Promise((resolve, reject) => {
+                res = resolve;
+                rej = reject;
+            });
+
+            worker.onmessage = (e) => {
+                if(e.data.message && e.data.message === 'done') {
+                    res();
+                } else {
+                    console.log('receive');
+                    data.push(e.data);
+                }
+            };
+
+            this.workers.push({
+                worker,
+                data,
+                complete,
+            });
+        }
+    }
+
+    async getGifBlob() {
+        let buffer;
+
+        let workersDataArray = [];
+        let first = true;
+        for(let i in this.workers) {
+            let worker = this.workers[i];
+            await worker.complete;
+            let workerDataArray = worker.data;
+
+            if(first) workersDataArray = workersDataArray.concat(workerDataArray.slice(0));
+            else workersDataArray = workersDataArray.concat(workerDataArray.slice(1));
+
+            first = false;
+        }
+
+        for(let i in workersDataArray) {
+            let uInt8ArrayData = workersDataArray[i];
+            if(!buffer) buffer = uInt8ArrayData;
+            else {
+                let newEntireBuffer = new Uint8Array(buffer.length + uInt8ArrayData.length);
+                newEntireBuffer.set(buffer);
+                newEntireBuffer.set(uInt8ArrayData, buffer.length);
+                buffer = newEntireBuffer;
+            }
+        }
+        return new Blob([buffer]);
+    }
+
+    done() {
+        this.workers.forEach(workerObj => {
+            workerObj.worker.postMessage({message: "done"});
+        })
+    }
+
+    postMessage( message ) {
+        if(this.currentWorker >= this.maxWorkers) this.currentWorker = 0;
+        this.workers[this.currentWorker++].worker.postMessage(message);
+    }
+
+    terminate() {
+        this.workers.forEach(worker => {
+            worker.worker.terminate();
+        });
+    }
+}
+
+let bitmapURL = null;
+let ctx;
+let gif;
+let time = Date.now();
 function FractalBackground( props ) {
 
     const canvasRef = useRef(null);
     const [bitmap, setBitmap] = useState(null);
 
-    console.log(bitmap)
-
     // TODO randomize angleArea in quadrants
     // TODO add logic to send branches away from clusterfuck of branching
     //  (length heightened, direction minimized to try to escape center
 
-    const worker = new fractalWorker();
-    worker.postMessage({
+    const fractalWorker = new FractalWorker();
+    const gifWorkerManager = new GifWorkerManager();
+
+    const config = {
         // strokeStyle: 'rgba(0, 153, 255, 1)',
         strokeStyle: 'rgba(255, 255, 255, 1)',
+        backgroundColor: "rgba(0, 0, 0, 1)",
+        foregroundColor: "rgba(0 ,0 ,0 , 0.5)",
 
         width: window.innerWidth,
         height: window.innerHeight,
@@ -108,61 +197,77 @@ function FractalBackground( props ) {
         // longestAnimationTime: 0.05,
         animateAllBranches: false,
         allowBranchesToGoBackward: false,
-    });
 
-    worker.onmessage = (e) => {
+        gifDelay: 50,
+        gifQuality: 20000,
+        gifRepeat: 0, // -1 no repeat
+    };
+
+    fractalWorker.postMessage(config);
+    fractalWorker.onmessage = (e) => {
+        if(e.data.message && e.data.message === 'done') {
+            gifWorkerManager.done();
+            fractalWorker.terminate();
+            return;
+        }
+
         if(canvasRef !== null) {
             const canvas = canvasRef.current;
-            const ctx = canvas.getContext('bitmaprenderer');
+            // const ctx = canvas.getContext('bitmaprenderer');
+
+            if(!ctx) ctx = canvas.getContext('2d');
             const bitmap = e.data.bitmap;
 
-            ctx.transferFromImageBitmap(bitmap);
-            canvas.toBlob(function(blob){
+            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            if(Date.now() - time > config.gifDelay) {
+                console.log('yep');
+                gifWorkerManager.postMessage({image: ctx.getImageData(0, 0, canvas.width, canvas.height).data, config: config})
+                time = Date.now();
+            } else {
+            }
 
-                // console.log(blob);
-                // console.log(encodeURIComponent(blob));
+            canvas.toBlob(function(blob){
                 bitmapURL = (URL.createObjectURL(blob));
 
-                const reader = new FileReader();
+                // let a = document.createElement('a');
+                // a.href = URL.createObjectURL(new Blob(encoder.createReadStream().))
 
-                reader.addEventListener('loadend', (e) => {
+                const canvasDownload = document.getElementById('canvas-download');
+                canvasDownload.href = canvas.toDataURL('image/jpg');
+                canvasDownload.download = 'rsymingt.jpg';
+            });
 
-                    const text = e.target.result;
-                    // console.log(text);
-
-
-                    var element = document.createElement('a');
-                    // element.setAttribute('href', 'data:image/png;base64,' + encodeURIComponent(text));
-                    // element.setAttribute('download', filename);
-                    element.setAttribute('href', text);
-                    element.setAttribute('href', URL.createObjectURL(blob));
-                   // element.setAttribute('target', '_blank')
-
-                    element.style.display = 'none';
-                    document.body.appendChild(element);
-
-                    // element.click();
-
-                    document.body.removeChild(element);
-
-                    // worker.onmessage = () => {}
-
-                });
-
-                reader.readAsDataURL(blob);
-
-                // var element = document.createElement('a');
-                // element.setAttribute('href', 'data:image/png;charset=utf-8,' + encodeURIComponent(bitmap));
-                // // element.setAttribute('download', filename);
-                // element.setAttribute('href', bitmapURL)
-                //
-                // element.style.display = 'none';
-                // document.body.appendChild(element);
-                //
-                // // element.click();
-                //
-                // document.body.removeChild(element);
-            })
+            // if(!rec) {
+            //     stream = canvas.captureStream(20);
+            //     rec = new MediaRecorder(stream, {
+            //         mimeType: "video/webm; codecs=vp8"
+            //     });
+            //
+            //     // let video = document.getElementById('canvas-video');
+            //     // video.srcObject = stream;
+            //
+            //     rec.ondataavailable = e => {
+            //         // console.log(e.data);
+            //         chunks.push(e.data);
+            //     };
+            //
+            //     rec.onstop = e => console.log('stop');
+            //
+            //     rec.start(100);
+            // }
+            // if(rec) {
+            //     let videoBlob = new Blob(chunks, {type: 'video/mp4'});
+            //
+            //     // let videoObject = document.createElement('video');
+            //     // videoObject.srcObject = videoBlob;
+            //     // document.write(videoObject);
+            //
+            //     let videoURL = URL.createObjectURL(videoBlob);
+            //
+            //     const canvasDownload = document.getElementById('canvas-video-download');
+            //     canvasDownload.href = videoURL;
+            //     canvasDownload.download = 'rsymingt.mp4';
+            // }
 
             // let bitmapBlob = new Blob([bitmap]);
             // let objectURL = URL.createObjectURL(bitmapBlob);
@@ -171,15 +276,14 @@ function FractalBackground( props ) {
     };
 
     useEffect(() => {
-
         return () => {
-            worker.terminate();
+            fractalWorker.terminate();
         }
     });
 
     return(
         <div  style={{
-            backgroundColor: "rgba(0 ,0 ,0 , 1)",
+            // backgroundColor: "rgba(0 ,0 ,0 , 1)",
             position: "fixed",
             zIndex: '-2',
             top: 0,
@@ -198,7 +302,7 @@ function FractalBackground( props ) {
                 right: 0,
             }} ref={canvasRef} width={window.innerWidth} height={window.innerHeight}/>
             <div style={{
-                backgroundColor: "rgba(0 ,0 ,0 , 0.5)",
+                // backgroundColor: "rgba(0 ,0 ,0 , 0.5)",
                 position: "fixed",
                 zIndex: '0',
                 top: 0,
@@ -206,13 +310,28 @@ function FractalBackground( props ) {
                 left: 0,
                 right: 0,
             }} />
-            <a style={{
+            <a id={"canvas-download"} style={{
                 backgroundColor: "rgba(0 ,0 ,0 , 0.5)",
                 position: "fixed",
                 zIndex: '1',
                 color: "white"
             }} href={bitmap} onClick={(el) => {
             }}>download</a>
+            <a id={"canvas-video-download"} style={{
+                backgroundColor: "rgba(0 ,0 ,0 , 0.5)",
+                position: "fixed",
+                top: 30,
+                zIndex: '1',
+                color: "white"
+            }} href={bitmap} onClick={async(el) => {
+                console.log('waiting');
+                let blob = await gifWorkerManager.getGifBlob();
+                let a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'test.gif';
+                a.click();
+                //     .then(blob => console.log(blob));
+            }}>Download Gif</a>
             {props.children}
         </div>
     )

@@ -184,12 +184,19 @@ async function drawFractal(canvas, ctx, workers, promiseBranches, branchMemoryAr
     }
 }
 
-function commitCanvas( canvas ) {
+function commitCanvas( canvas, config ) {
     const { width, height } = canvas;
+    const { backgroundColor, foregroundColor } = config;
     const ctx = canvas.getContext('2d');
 
     ctx.clearRect(-width / 2, -height / 2, width, height);
+
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(-width/2, -height/2, width, height);
     ctx.stroke();
+
+    ctx.fillStyle = foregroundColor;
+    ctx.fillRect(-width/2, -height/2, width, height);
 
     const bitmap = canvas.transferToImageBitmap();
     postMessage({bitmap});
@@ -198,16 +205,16 @@ function commitCanvas( canvas ) {
 let done = false;
 let animationsDone = false;
 
-async function canvasService( canvas ) {
-    commitCanvas(canvas);
+async function canvasService( canvas, config ) {
+    commitCanvas(canvas, config);
 
     if(!animationsDone) {
         setTimeout(() => {
-            canvasService(canvas);
+            canvasService(canvas, config);
         }, 20)
     } else {
         // eslint-disable-next-line no-restricted-globals
-        close();
+        postMessage({message: "done"});
     }
 }
 
@@ -240,7 +247,7 @@ async function animationService( canvas, ctx, workers, promiseBranches, animatio
         // CLEANUP
         workers.forEach(worker => worker.terminate());
         animationsDone = true;
-        commitCanvas(canvas);
+        commitCanvas(canvas, config);
     } else {
         setTimeout(async() => {
             animationService(canvas, ctx, workers, promiseBranches, animationPromises, config);
@@ -260,7 +267,7 @@ async function fractalService(workers, config) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    canvasService(canvas)
+    canvasService(canvas, config)
         .catch(err => console.log(err));
 
     ctx.translate(width / 2, height / 2);
@@ -289,9 +296,4 @@ onmessage = async(e) => { // eslint-disable-line no-restricted-globals
     }
 
     await fractalService(workers, e.data);
-
-//
-//     const canvas = e.data.canvas;
-//     animateFractal(canvas);
-//     canvasService(canvas);
 };
