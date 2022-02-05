@@ -43,11 +43,11 @@ function HomePage() {
                         <h1 style={{
                             color: "white"
                         }}>Hello, my name is Ryan Symington</h1>
-                        t
+                        <MDBBtn>Learn More</MDBBtn>
                     </MDBAnimation>
                 </Section>
                 <Section style={{
-                    backgroundColor: 'black'
+                    // backgroundColor: 'black'
                 }}>
                     <MDBAnimation type="zoomIn">
                         <h1 style={{
@@ -65,6 +65,7 @@ function Section( props ) {
     const style = props.style ? props.style : {};
 
     Object.assign(style, {
+        position: "relative",
         width: "100vw",
         height: "100vh",
         display: "flex",
@@ -83,7 +84,8 @@ function Section( props ) {
 class GifWorkerManager {
     constructor() {
         this.currentWorker = 0;
-        this.maxWorkers = navigator.hardwareConcurrency;
+        // this.maxWorkers = navigator.hardwareConcurrency;
+        this.maxWorkers = 1;
 
         this.workers = [];
         for(let w = 0; w < this.maxWorkers; w++) {
@@ -285,22 +287,22 @@ function FractalBackground( props ) {
         <div  style={{
             // backgroundColor: "rgba(0 ,0 ,0 , 1)",
             position: "fixed",
-            zIndex: '-2',
+            // zIndex: '-2',
             top: 0,
             bottom:0,
             left: 0,
             right: 0,
             overflow: "auto"
-        }}>
+        }} >
             <canvas style={{
                 filter: "blur(2px)",
                 position: "fixed",
-                zIndex: '-1',
+                // zIndex: '-1',
                 top: 0,
                 bottom:0,
                 left: 0,
                 right: 0,
-            }} ref={canvasRef} width={window.innerWidth} height={window.innerHeight}/>
+            }} onScroll={() => console.log("scrolling")} ref={canvasRef} width={window.innerWidth} height={window.innerHeight}/>
             <div style={{
                 // backgroundColor: "rgba(0 ,0 ,0 , 0.5)",
                 position: "fixed",

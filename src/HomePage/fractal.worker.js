@@ -290,7 +290,8 @@ onmessage = async(e) => { // eslint-disable-line no-restricted-globals
     if (!e) return;
 
     let workers = [];
-    let maxThreads = navigator.hardwareConcurrency;
+    // let maxThreads = navigator.hardwareConcurrency;
+    let maxThreads = 1;
     for(let w = 0; w < maxThreads; w++) {
         workers.push(new BranchWorker());
     }

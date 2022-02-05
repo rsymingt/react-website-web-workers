@@ -8,11 +8,13 @@ import HomePage from './HomePage';
 
 function App() {
   return (
-    <Router>
-      <UserProvider value={{name: "Ryan", Auth: false}}>
-        <Route path="/" exact component={HomePage} />
-      </UserProvider>
-    </Router>
+    <React.StrictMode>
+      <Router>
+        <UserProvider value={{name: "Ryan", Auth: false}}>
+          <Route path="/" exact component={HomePage} />
+        </UserProvider>
+      </Router>
+    </React.StrictMode>
   );
 }
 
