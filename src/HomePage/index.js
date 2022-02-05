@@ -83,7 +83,8 @@ function Section( props ) {
 class GifWorkerManager {
     constructor() {
         this.currentWorker = 0;
-        this.maxWorkers = navigator.hardwareConcurrency;
+        // this.maxWorkers = navigator.hardwareConcurrency;
+        this.maxWorkers = 1;
 
         this.workers = [];
         for(let w = 0; w < this.maxWorkers; w++) {
@@ -188,7 +189,7 @@ function FractalBackground( props ) {
         minLength: 50,
         maxLength: 150,
         minBranches: 2,
-        maxBranches: 4,
+        maxBranches: 3,
         maxDepth: 14,
 
         limitX: window.innerWidth/2*1.5,
