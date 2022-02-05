@@ -190,7 +190,7 @@ function FractalBackground( props ) {
         minLength: 50,
         maxLength: 150,
         minBranches: 2,
-        maxBranches: 4,
+        maxBranches: 3,
         maxDepth: 14,
 
         limitX: window.innerWidth/2*1.5,
